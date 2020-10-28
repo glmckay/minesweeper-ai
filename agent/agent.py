@@ -1,5 +1,5 @@
 import numpy
-from scipy.special import expit # more efficient calculation of sigmoid
+# from scipy.special import expit # more efficient calculation of sigmoid
 
 # helpers
 def sigmoid_prime(z):
