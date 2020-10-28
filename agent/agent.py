@@ -45,7 +45,7 @@ class Network:
 
 		return outputs
 
-	def backpropagation(self, inputs, labels):
+	def backpropagation(self, delta):
 		"""backpropogation algorithm, returning the gradient of the cost function"""
 		outputs = self.evaluate(inputs)
 
@@ -54,7 +54,7 @@ class Network:
 
 		# initialise variables
 		# # delta, initialised with (output - label) \odot modifier (see costfunctions.Cost class)
-		delta = self.cost.deltaInit(outputs[-1], labels)
+		# delta = self.cost.deltaInit(outputs[-1], labels)
 		# nabla
 		nabla = []
 
