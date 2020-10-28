@@ -9,7 +9,7 @@ def sigmoid_prime(z):
 
 # Network
 class Network:
-	def __init__(self, sizes, cost): #, smallWeightInit=True):
+	def __init__(self, sizes): #, cost , smallWeightInit=True):
 		"""initialise weights and biases for the feedforward neural network, along with specified cost"""
 		# assert sizes[0] == 784 # assert that the first layer has 784 = 28x28 nodes, one for each pixel
 		# assert sizes[-1] == 10 # assert that the last layer has 10 nodes, one for each digit
@@ -24,7 +24,7 @@ class Network:
 		# 	for W in self.weights: W[:-1,:] *= 1 / numpy.sqrt(len(W)-1) 
 
 		# record cost function
-		self.cost = cost
+		# self.cost = cost
 
 	def evaluate(self, inputs):
 		"""evaluation of multilayer (continuous) perceptron network"""
