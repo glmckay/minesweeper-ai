@@ -1,53 +1,54 @@
 """A command line version of Minesweeper"""
+
 import random
 import re
 import time
 from string import ascii_lowercase
 
 
-def setupgrid(gridsize, start, numberofmines):
-    emptygrid = [['0' for i in range(gridsize)] for i in range(gridsize)]
+def setup_grid(grid_size, start, number_of_mines):
+    empty_grid = [["0" for i in range(grid_size)] for i in range(grid_size)]
 
-    mines = getmines(emptygrid, start, numberofmines)
+    mines = get_mines(empty_grid, start, number_of_mines)
 
     for i, j in mines:
-        emptygrid[i][j] = 'X'
+        empty_grid[i][j] = "X"
 
-    grid = getnumbers(emptygrid)
+    grid = get_numbers(empty_grid)
 
     return (grid, mines)
 
 
-def showgrid(grid):
-    gridsize = len(grid)
+def show_grid(grid):
+    grid_size = len(grid)
 
-    horizontal = '   ' + (4 * gridsize * '-') + '-'
+    horizontal = "   " + (4 * grid_size * "-") + "-"
 
     # Print top column letters
-    toplabel = '     '
+    top_label = "     "
 
-    for i in ascii_lowercase[:gridsize]:
-        toplabel = toplabel + i + '   '
+    for i in ascii_lowercase[:grid_size]:
+        top_label = top_label + i + "   "
 
-    print(toplabel + '\n' + horizontal)
+    print(top_label + "\n" + horizontal)
 
     # Print left row numbers
     for idx, i in enumerate(grid):
-        row = '{0:2} |'.format(idx + 1)
+        row = "{0:2} |".format(idx + 1)
 
         for j in i:
-            row = row + ' ' + j + ' |'
+            row = row + " " + j + " |"
 
-        print(row + '\n' + horizontal)
+        print(row + "\n" + horizontal)
 
-    print('')
+    print("")
 
 
-def getrandomcell(grid):
-    gridsize = len(grid)
+def get_random_cell(grid):
+    grid_size = len(grid)
 
-    a = random.randint(0, gridsize - 1)
-    b = random.randint(0, gridsize - 1)
+    a = random.randint(0, grid_size - 1)
+    b = random.randint(0, grid_size - 1)
 
     return (a, b)
 
@@ -66,154 +67,155 @@ def getneighbors(grid, rowno, colno):
     return neighbors
 
 
-def getmines(grid, start, numberofmines):
+def get_mines(grid, start, numberofmines):
     mines = []
     neighbors = getneighbors(grid, *start)
 
     for i in range(numberofmines):
-        cell = getrandomcell(grid)
+        cell = get_random_cell(grid)
         while cell == start or cell in mines or cell in neighbors:
-            cell = getrandomcell(grid)
+            cell = get_random_cell(grid)
         mines.append(cell)
 
     return mines
 
 
-def getnumbers(grid):
+def get_numbers(grid):
     for rowno, row in enumerate(grid):
         for colno, cell in enumerate(row):
-            if cell != 'X':
+            if cell != "X":
                 # Gets the values of the neighbors
-                values = [grid[r][c] for r, c in getneighbors(grid,
-                                                              rowno, colno)]
+                values = [grid[r][c] for r, c in getneighbors(grid, rowno, colno)]
 
                 # Counts how many are mines
-                grid[rowno][colno] = str(values.count('X'))
+                grid[rowno][colno] = str(values.count("X"))
 
     return grid
 
 
-def showcells(grid, currgrid, rowno, colno):
+def show_cells(grid, curr_grid, row, col):
     # Exit function if the cell was already shown
-    if currgrid[rowno][colno] != ' ':
+    if curr_grid[row][col] != " ":
         return
 
     # Show current cell
-    currgrid[rowno][colno] = grid[rowno][colno]
+    curr_grid[row][col] = grid[row][col]
 
     # Get the neighbors if the cell is empty
-    if grid[rowno][colno] == '0':
-        for r, c in getneighbors(grid, rowno, colno):
+    if grid[row][col] == "0":
+        for r, c in getneighbors(grid, row, col):
             # Repeat function for each neighbor that doesn't have a flag
-            if currgrid[r][c] != 'F':
-                showcells(grid, currgrid, r, c)
+            if curr_grid[r][c] != "F":
+                show_cells(grid, curr_grid, r, c)
 
 
-def playagain():
-    choice = input('Play again? (y/n): ')
+def play_again():
+    choice = input("Play again? (y/n): ")
 
-    return choice.lower() == 'y'
+    return choice.lower() == "y"
 
 
-def parseinput(inputstring, gridsize, helpmessage):
+def parse_input(input_string, grid_size, help_message):
     cell = ()
     flag = False
-    message = "Invalid cell. " + helpmessage
+    message = "Invalid cell. " + help_message
 
-    pattern = r'([a-{}])([0-9]+)(f?)'.format(ascii_lowercase[gridsize - 1])
-    validinput = re.match(pattern, inputstring)
+    pattern = fr"([a-{ascii_lowercase[grid_size - 1]}])([0-9]+)(f?)"
+    valid_input = re.match(pattern, input_string)
 
-    if inputstring == 'help':
-        message = helpmessage
+    if input_string == "help":
+        message = help_message
+    elif valid_input:
+        row = int(valid_input.group(2)) - 1
+        col = ascii_lowercase.index(valid_input.group(1))
+        flag = bool(valid_input.group(3))
 
-    elif validinput:
-        rowno = int(validinput.group(2)) - 1
-        colno = ascii_lowercase.index(validinput.group(1))
-        flag = bool(validinput.group(3))
+        if -1 < row < grid_size:
+            cell = (row, col)
+            message = ""
 
-        if -1 < rowno < gridsize:
-            cell = (rowno, colno)
-            message = ''
-
-    return {'cell': cell, 'flag': flag, 'message': message}
+    return {"cell": cell, "flag": flag, "message": message}
 
 
-def playgame():
-    gridsize = 10
-    numberofmines = 10
+def play_game():
+    grid_size = 10
+    number_of_mines = 10
 
-    currgrid = [[' ' for i in range(gridsize)] for i in range(gridsize)]
+    curr_grid = [[" " for i in range(grid_size)] for i in range(grid_size)]
 
     grid = []
     flags = []
-    starttime = 0
+    start_time = 0
 
-    helpmessage = ("Type the column followed by the row (eg. a5). "
-                   "To put or remove a flag, add 'f' to the cell (eg. a5f).")
+    help_message = (
+        "Type the column followed by the row (eg. a5). "
+        "To put or remove a flag, add 'f' to the cell (eg. a5f)."
+    )
 
-    showgrid(currgrid)
-    print(helpmessage + " Type 'help' to show this message again.\n")
+    show_grid(curr_grid)
+    print(help_message + " Type 'help' to show this message again.\n")
 
     while True:
-        minesleft = numberofmines - len(flags)
-        prompt = input('Enter the cell ({} mines left): '.format(minesleft))
-        result = parseinput(prompt, gridsize, helpmessage + '\n')
+        mines_left = number_of_mines - len(flags)
+        prompt = input("Enter the cell ({} mines left): ".format(mines_left))
+        result = parse_input(prompt, grid_size, help_message + "\n")
 
-        message = result['message']
-        cell = result['cell']
+        message = result["message"]
+        cell = result["cell"]
 
         if cell:
-            print('\n\n')
-            rowno, colno = cell
-            currcell = currgrid[rowno][colno]
-            flag = result['flag']
+            print("\n\n")
+            row, col = cell
+            curr_cell = curr_grid[row][col]
+            flag = result["flag"]
 
             if not grid:
-                grid, mines = setupgrid(gridsize, cell, numberofmines)
-            if not starttime:
-                starttime = time.time()
+                grid, mines = setup_grid(grid_size, cell, number_of_mines)
+            if not start_time:
+                start_time = time.time()
 
             if flag:
                 # Add a flag if the cell is empty
-                if currcell == ' ':
-                    currgrid[rowno][colno] = 'F'
+                if curr_cell == " ":
+                    curr_grid[row][col] = "F"
                     flags.append(cell)
                 # Remove the flag if there is one
-                elif currcell == 'F':
-                    currgrid[rowno][colno] = ' '
+                elif curr_cell == "F":
+                    curr_grid[row][col] = " "
                     flags.remove(cell)
                 else:
-                    message = 'Cannot put a flag there'
+                    message = "Cannot put a flag there"
 
             # If there is a flag there, show a message
             elif cell in flags:
-                message = 'There is a flag there'
+                message = "There is a flag there"
 
-            elif grid[rowno][colno] == 'X':
-                print('Game Over\n')
-                showgrid(grid)
-                if playagain():
-                    playgame()
+            elif grid[row][col] == "X":
+                print("Game Over\n")
+                show_grid(grid)
+                if play_again():
+                    play_game()
                 return
 
-            elif currcell == ' ':
-                showcells(grid, currgrid, rowno, colno)
+            elif curr_cell == " ":
+                show_cells(grid, curr_grid, row, col)
 
             else:
                 message = "That cell is already shown"
 
             if set(flags) == set(mines):
-                minutes, seconds = divmod(int(time.time() - starttime), 60)
+                minutes, seconds = divmod(int(time.time() - start_time), 60)
                 print(
-                    'You Win. '
-                    'It took you {} minutes and {} seconds.\n'.format(minutes,
-                                                                      seconds))
-                showgrid(grid)
-                if playagain():
-                    playgame()
+                    "You Win. "
+                    "It took you {} minutes and {} seconds.\n".format(minutes, seconds)
+                )
+                show_grid(grid)
+                if play_again():
+                    play_game()
                 return
 
-        showgrid(currgrid)
+        show_grid(curr_grid)
         print(message)
 
-playgame()
+
+play_game()
