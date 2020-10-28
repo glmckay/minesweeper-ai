@@ -120,14 +120,14 @@ def parse_input(input_string, grid_size, help_message):
     flag = False
     message = "Invalid cell. " + help_message
 
-    pattern = fr"([a-{ascii_lowercase[grid_size - 1]}])([0-9]+)(f?)"
+    pattern = fr"([0-9]+),\s+([0-9]+)(\s+f)?"
     valid_input = re.match(pattern, input_string)
 
     if input_string == "help":
         message = help_message
     elif valid_input:
-        row = int(valid_input.group(2)) - 1
-        col = ascii_lowercase.index(valid_input.group(1))
+        row = int(valid_input.group(1)) - 1
+        col = int(valid_input.group(2)) - 1
         flag = bool(valid_input.group(3))
 
         if -1 < row < grid_size:
@@ -150,8 +150,8 @@ def playgame(grid_size=10, number_of_mines=10):
     start_time = 0
 
     help_message = (
-        "Type the column followed by the row (eg. a5). "
-        "To put or remove a flag, add 'f' to the cell (eg. a5f)."
+        'Type the cell as <row>,<column> (eg. "3,4").'
+        'To toggle a flag, add "f" after the cell coordinates (eg. "3,5 f").'
     )
 
     show_grid(curr_grid)
