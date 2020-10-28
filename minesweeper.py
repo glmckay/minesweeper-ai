@@ -138,10 +138,7 @@ def parseinput(inputstring, gridsize, helpmessage):
     return {'cell': cell, 'flag': flag, 'message': message}
 
 
-def playgame():
-    gridsize = 10
-    numberofmines = 10
-
+def playgame(gridsize=10, numberofmines=10):
     currgrid = [[' ' for i in range(gridsize)] for i in range(gridsize)]
 
     grid = []
