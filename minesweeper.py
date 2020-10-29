@@ -29,7 +29,7 @@ class Game:
     ADJACENT_OFFSET = 1
     FLAGGED_OFFSET = 2
 
-    def __init__(self, width, height, number_of_mines):
+    def __init__(self, width: int, height: int, number_of_mines: int):
 
         # basic sanity check, reasonable games should never be close to this
         assert number_of_mines <= width * height - 9
@@ -37,16 +37,22 @@ class Game:
         self.width = width
         self.height = height
         self.number_of_mines = number_of_mines
-        self._mine_grid = None
-        self.player_grid = numpy.zeros((width * height * self.props_per_cell, 1))
+
         self.cells_hidden = width * height
         self.number_of_flags = 0
         self.game_over = False
 
-    def _index(self, coords):
+        # The point is to store the player's grid as a 1-dim'l numpy array so that it
+        # can easily be fed to a neural network.
+        self.player_grid = numpy.zeros((width * height * self.props_per_cell, 1))
+
+        # Set as None since we generate it based on the first cell revealed
+        self._true_grid = None
+
+    def _index(self, coords: Coords):
         return (coords.row * self.width + coords.col) * self.props_per_cell
 
-    def neighbours(self, coords):
+    def neighbours(self, coords: Coords):
         row_range = range(max(0, coords.row - 1), min(self.height, coords.row + 2))
         col_range = range(max(0, coords.col - 1), min(self.width, coords.col + 2))
         return (
@@ -55,7 +61,9 @@ class Game:
             if r != coords.row or c != coords.col
         )
 
-    def initialise_mines(self, initial_cell):
+    def initialise_grid(self, initial_cell: Coords):
+        """Setup the grid so that the first cell has desirable properties"""
+
         def allowed(cell):
             # We don't allow mines to be on or adjacent to the initial cell
             return initial_cell != cell and not initial_cell.adjacent(cell)
@@ -66,58 +74,67 @@ class Game:
         )
         mines = random.sample(list(filter(allowed, all_cells)), self.number_of_mines)
 
-        # setup internal grids
-        self._mine_grid = [[0 for c in range(self.width)] for r in range(self.height)]
+        # The true grid can be something easier to work with
+        self._true_grid = [[0 for c in range(self.width)] for r in range(self.height)]
 
+        # populate adjacency values, then set mine positions
         for mine in mines:
             for r, c in self.neighbours(mine):
-                self._mine_grid[r][c] += 1
+                self._true_grid[r][c] += 1
 
         for r, c in mines:
-            self._mine_grid[r][c] = Game.MINE
+            self._true_grid[r][c] = Game.MINE
 
-    def flag_cell(self, coords):
-        array_index = self._index(coords)
-        if self.player_grid[array_index + self.VISIBLE_OFFSET] == 1:
+    def toggle_flag(self, coords: Coords):
+        """Toggles the flag at the specified cell"""
+
+        cell_index = self._index(coords)
+
+        visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+        if visible:
             # cell is visible, nothing to do
             return True
 
-        flag_index = array_index + self.FLAGGED_OFFSET
-        if self.player_grid[flag_index] == 1:
-            self.player_grid[flag_index] = 0
-            self.number_of_flags -= 1
-        else:
-            self.player_grid[flag_index] = 1
-            self.number_of_flags += 1
+        flag_index = cell_index + self.FLAGGED_OFFSET
+        flagged = self.player_grid[flag_index] == 1
 
-    def reveal_cell(self, coords):
-        array_index = self._index(coords)
-        if (
-            self.player_grid[array_index + self.VISIBLE_OFFSET] == 1
-            or self.player_grid[array_index + self.FLAGGED_OFFSET] == 1
-        ):
+        self.player_grid[flag_index] = 0 if flagged else 1
+        self.number_of_flags += -1 if flagged else 1
+
+    def reveal_cell(self, coords: Coords):
+        """Reveal the specified cell, and all adjacent cells if none contain mines"""
+        cell_index = self._index(coords)
+
+        visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+        flagged = self.player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+
+        if visible or flagged:
             # cell is visible or flagged, nothing to do
             return
 
-        true_value = self._mine_grid[coords.row][coords.col]
+        true_value = self._true_grid[coords.row][coords.col]
         if true_value == Game.MINE:
+            # Unlucky...
             self.game_over = True
             return
 
         self.cells_hidden -= 1
-        self.player_grid[array_index + self.VISIBLE_OFFSET] = 1
-        self.player_grid[array_index + self.ADJACENT_OFFSET] = true_value / 8
+        self.player_grid[cell_index + self.VISIBLE_OFFSET] = 1
+        self.player_grid[cell_index + self.ADJACENT_OFFSET] = true_value / 8
 
         if true_value == 0:
             # Reveal neighbours if no adjacent mines
             for other in self.neighbours(coords):
                 self.reveal_cell(other)
 
-    def process_move(self, coords, toggle_flag):
+    def process_move(self, coords: Coords, toggle_flag: bool):
+        """Process a single move.
+        A move is either revealing a cell or toggling a flag on a cell.
+        """
 
-        if self._mine_grid is None:
-            # First move, we ensure no mines are adjacent
-            self.initialise_mines(coords)
+        if self._true_grid is None:
+            # First move
+            self.initialise_grid(coords)
             self.reveal_cell(coords)
         elif toggle_flag:
             self.flag_cell(coords)
@@ -125,14 +142,17 @@ class Game:
             self.reveal_cell(coords)
 
         if self.cells_hidden == self.number_of_mines:
+            # Victory!
             self.game_over = True
 
     def print(self):
-
-        horizontal = "   " + (4 * self.width * "-") + "-"
+        """Prints the game's board.
+        TODO: Cleanup
+        """
 
         # Print top column letters
         top_label = "     " + "".join(f"{c+1:3} " for c in range(self.width))
+        horizontal = "   " + (4 * self.width * "-") + "-"
 
         print(top_label)
         print(horizontal)
@@ -143,7 +163,7 @@ class Game:
                 cell_index = self._index(Coords(r, c))
                 visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
                 if visible or self.game_over:
-                    row_string += f" {self._mine_grid[r][c]} |"
+                    row_string += f" {self._true_grid[r][c]} |"
                 else:
                     is_flagged = self.player_grid[cell_index + self.FLAGGED_OFFSET] == 1
                     row_string += f" F |" if is_flagged else "   |"
@@ -160,7 +180,7 @@ def play_again():
     return choice.lower() == "y"
 
 
-def get_move(width, height, mines_left):
+def get_move(width: int, height: int, mines_left: int):
     usage = (
         'Type the cell as <row>,<column> (eg. "3,4").\n'
         'To toggle a flag, add "f" after the cell coordinates (eg. "3,5 f").'
@@ -187,7 +207,7 @@ def get_move(width, height, mines_left):
             print(usage)
 
 
-def play_game(width=10, height=10, number_of_mines=10):
+def play_game(width: int = 10, height: int = 10, number_of_mines: int = 10):
 
     while True:
 
