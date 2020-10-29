@@ -1,112 +1,157 @@
 """A command line version of Minesweeper"""
 
+import numpy
 import random
 import re
 import time
-from string import ascii_lowercase
+from itertools import product
+from typing import NamedTuple
 
 
-def setup_grid(grid_size, start, number_of_mines):
-    empty_grid = [["0" for i in range(grid_size)] for i in range(grid_size)]
+class Coords(NamedTuple):
+    row: int
+    col: int
 
-    mines = get_mines(empty_grid, start, number_of_mines)
-
-    for i, j in mines:
-        empty_grid[i][j] = "X"
-
-    grid = get_numbers(empty_grid)
-
-    return (grid, mines)
+    def adjacent(self, other):
+        """Returns true if both cells are equal or adjacent"""
+        return self != other and (
+            abs(self.row - other.row) <= 1 and abs(self.col - other.col) <= 1
+        )
 
 
-def show_grid(grid):
-    grid_size = len(grid)
+class Game:
 
-    horizontal = "   " + (4 * grid_size * "-") + "-"
+    props_per_cell = 3
 
-    # Print top column letters
-    top_label = "     "
+    MINE = "M"
 
-    for i in ascii_lowercase[:grid_size]:
-        top_label = top_label + i + "   "
+    VISIBLE_OFFSET = 0
+    ADJACENT_OFFSET = 1
+    FLAGGED_OFFSET = 2
 
-    print(top_label + "\n" + horizontal)
+    def __init__(self, width, height, number_of_mines):
 
-    # Print left row numbers
-    for idx, i in enumerate(grid):
-        row = "{0:2} |".format(idx + 1)
+        # basic sanity check, reasonable games should never be close to this
+        assert number_of_mines <= width * height - 9
 
-        for j in i:
-            row = row + " " + j + " |"
+        self.width = width
+        self.height = height
+        self.number_of_mines = number_of_mines
+        self._mine_grid = None
+        self.player_grid = numpy.zeros((width * height * self.props_per_cell, 1))
+        self.cells_hidden = width * height
+        self.number_of_flags = 0
+        self.game_over = False
 
-        print(row + "\n" + horizontal)
+    def _index(self, coords):
+        return (coords.row * self.width + coords.col) * self.props_per_cell
 
-    print("")
+    def neighbours(self, coords):
+        row_range = range(max(0, coords.row - 1), min(self.height, coords.row + 2))
+        col_range = range(max(0, coords.col - 1), min(self.width, coords.col + 2))
+        return (
+            Coords(r, c)
+            for r, c in product(row_range, col_range)
+            if r != coords.row or c != coords.col
+        )
 
+    def initialise_mines(self, initial_cell):
+        def allowed(cell):
+            # We don't allow mines to be on or adjacent to the initial cell
+            return initial_cell != cell and not initial_cell.adjacent(cell)
 
-def get_random_cell(grid):
-    grid_size = len(grid)
+        # Pick mines from allowed cells
+        all_cells = (
+            Coords(r, c) for r, c in product(range(self.height), range(self.width))
+        )
+        mines = random.sample(list(filter(allowed, all_cells)), self.number_of_mines)
 
-    a = random.randint(0, grid_size - 1)
-    b = random.randint(0, grid_size - 1)
+        # setup internal grids
+        self._mine_grid = [[0 for c in range(self.width)] for r in range(self.height)]
 
-    return (a, b)
+        for mine in mines:
+            for r, c in self.neighbours(mine):
+                self._mine_grid[r][c] += 1
 
+        for r, c in mines:
+            self._mine_grid[r][c] = Game.MINE
 
-def getneighbors(grid, rowno, colno):
-    gridsize = len(grid)
-    neighbors = []
+    def flag_cell(self, coords):
+        array_index = self._index(coords)
+        if self.player_grid[array_index + self.VISIBLE_OFFSET] == 1:
+            # cell is visible, nothing to do
+            return True
 
-    for i in range(-1, 2):
-        for j in range(-1, 2):
-            if i == 0 and j == 0:
-                continue
-            elif -1 < (rowno + i) < gridsize and -1 < (colno + j) < gridsize:
-                neighbors.append((rowno + i, colno + j))
+        flag_index = array_index + self.FLAGGED_OFFSET
+        if self.player_grid[flag_index] == 1:
+            self.player_grid[flag_index] = 0
+            self.number_of_flags -= 1
+        else:
+            self.player_grid[flag_index] = 1
+            self.number_of_flags += 1
 
-    return neighbors
+    def reveal_cell(self, coords):
+        array_index = self._index(coords)
+        if (
+            self.player_grid[array_index + self.VISIBLE_OFFSET] == 1
+            or self.player_grid[array_index + self.FLAGGED_OFFSET] == 1
+        ):
+            # cell is visible or flagged, nothing to do
+            return
 
+        true_value = self._mine_grid[coords.row][coords.col]
+        if true_value == Game.MINE:
+            self.game_over = True
+            return
 
-def get_mines(grid, start, numberofmines):
-    mines = []
-    neighbors = getneighbors(grid, *start)
+        self.cells_hidden -= 1
+        self.player_grid[array_index + self.VISIBLE_OFFSET] = 1
+        self.player_grid[array_index + self.ADJACENT_OFFSET] = true_value / 8
 
-    for i in range(numberofmines):
-        cell = get_random_cell(grid)
-        while cell == start or cell in mines or cell in neighbors:
-            cell = get_random_cell(grid)
-        mines.append(cell)
+        if true_value == 0:
+            # Reveal neighbours if no adjacent mines
+            for other in self.neighbours(coords):
+                self.reveal_cell(other)
 
-    return mines
+    def process_move(self, coords, toggle_flag):
 
+        if self._mine_grid is None:
+            # First move, we ensure no mines are adjacent
+            self.initialise_mines(coords)
+            self.reveal_cell(coords)
+        elif toggle_flag:
+            self.flag_cell(coords)
+        else:
+            self.reveal_cell(coords)
 
-def get_numbers(grid):
-    for rowno, row in enumerate(grid):
-        for colno, cell in enumerate(row):
-            if cell != "X":
-                # Gets the values of the neighbors
-                values = [grid[r][c] for r, c in getneighbors(grid, rowno, colno)]
+        if self.cells_hidden == self.number_of_mines:
+            self.game_over = True
 
-                # Counts how many are mines
-                grid[rowno][colno] = str(values.count("X"))
+    def print(self):
 
-    return grid
+        horizontal = "   " + (4 * self.width * "-") + "-"
 
+        # Print top column letters
+        top_label = "     " + "".join(f"{c+1:3} " for c in range(self.width))
 
-def show_cells(grid, curr_grid, row, col):
-    # Exit function if the cell was already shown
-    if curr_grid[row][col] != " ":
-        return
+        print(top_label)
+        print(horizontal)
 
-    # Show current cell
-    curr_grid[row][col] = grid[row][col]
+        for r in range(self.height):
+            row_string = f"{r+1:3} |"
+            for c in range(self.width):
+                cell_index = self._index(Coords(r, c))
+                visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+                if visible or self.game_over:
+                    row_string += f" {self._mine_grid[r][c]} |"
+                else:
+                    is_flagged = self.player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+                    row_string += f" F |" if is_flagged else "   |"
 
-    # Get the neighbors if the cell is empty
-    if grid[row][col] == "0":
-        for r, c in getneighbors(grid, row, col):
-            # Repeat function for each neighbor that doesn't have a flag
-            if curr_grid[r][c] != "F":
-                show_cells(grid, curr_grid, r, c)
+            print(row_string)
+            print(horizontal)
+
+        print("")
 
 
 def play_again():
@@ -115,109 +160,61 @@ def play_again():
     return choice.lower() == "y"
 
 
-def parse_input(input_string, grid_size, help_message):
-    cell = ()
-    flag = False
-    message = "Invalid cell. " + help_message
-
-    pattern = fr"([0-9]+),\s+([0-9]+)(\s+f)?"
-    valid_input = re.match(pattern, input_string)
-
-    if input_string == "help":
-        message = help_message
-    elif valid_input:
-        row = int(valid_input.group(1)) - 1
-        col = int(valid_input.group(2)) - 1
-        flag = bool(valid_input.group(3))
-
-        if -1 < row < grid_size:
-            cell = (row, col)
-            message = ""
-
-    return {"cell": cell, "flag": flag, "message": message}
-
-
-def play_game():
-    grid_size = 10
-    number_of_mines = 10
-
-
-def playgame(grid_size=10, number_of_mines=10):
-    curr_grid = [[" " for i in range(grid_size)] for i in range(grid_size)]
-
-    grid = []
-    flags = []
-    start_time = 0
-
-    help_message = (
-        'Type the cell as <row>,<column> (eg. "3,4").'
+def get_move(width, height, mines_left):
+    usage = (
+        'Type the cell as <row>,<column> (eg. "3,4").\n'
         'To toggle a flag, add "f" after the cell coordinates (eg. "3,5 f").'
     )
 
-    show_grid(curr_grid)
-    print(help_message + " Type 'help' to show this message again.\n")
+    pattern = fr"([0-9]+),\s*([0-9]+)(\s+f)?"
+    while True:
+        user_input = input(f"Enter the cell ({mines_left} mines left): ")
+        match = re.match(pattern, user_input)
+
+        if user_input == "help":
+            print(usage)
+        elif match:
+            row = int(match.group(1)) - 1
+            col = int(match.group(2)) - 1
+            toggle_flag = bool(match.group(3))
+
+            if 0 <= row < height and 0 <= col < width:
+                return Coords(row, col), toggle_flag
+            else:
+                print("Invalid coordinates")
+        else:
+            print("Invalid Input.")
+            print(usage)
+
+
+def play_game(width=10, height=10, number_of_mines=10):
 
     while True:
-        mines_left = number_of_mines - len(flags)
-        prompt = input("Enter the cell ({} mines left): ".format(mines_left))
-        result = parse_input(prompt, grid_size, help_message + "\n")
 
-        message = result["message"]
-        cell = result["cell"]
+        game = Game(width, height, number_of_mines)
 
-        if cell:
-            print("\n\n")
-            row, col = cell
-            curr_cell = curr_grid[row][col]
-            flag = result["flag"]
+        start_time = time.time()
 
-            if not grid:
-                grid, mines = setup_grid(grid_size, cell, number_of_mines)
-            if not start_time:
-                start_time = time.time()
+        while True:
+            mines_left = game.number_of_mines - game.number_of_flags
 
-            if flag:
-                # Add a flag if the cell is empty
-                if curr_cell == " ":
-                    curr_grid[row][col] = "F"
-                    flags.append(cell)
-                # Remove the flag if there is one
-                elif curr_cell == "F":
-                    curr_grid[row][col] = " "
-                    flags.remove(cell)
-                else:
-                    message = "Cannot put a flag there"
+            game.print()
 
-            # If there is a flag there, show a message
-            elif cell in flags:
-                message = "There is a flag there"
+            if game.game_over:
+                print("Game Over")
+                if game.number_of_mines == game.cells_hidden:
+                    minutes, seconds = divmod(int(time.time() - start_time), 60)
+                    print(
+                        "You Win. "
+                        f"It took you {minutes} minutes and {seconds} seconds."
+                    )
+                break
 
-            elif grid[row][col] == "X":
-                print("Game Over\n")
-                show_grid(grid)
-                if play_again():
-                    play_game()
-                return
+            coords, toggle_flag = get_move(game.width, game.height, mines_left)
 
-            elif curr_cell == " ":
-                show_cells(grid, curr_grid, row, col)
+            game.process_move(coords, toggle_flag)
 
-            else:
-                message = "That cell is already shown"
-
-            if set(flags) == set(mines):
-                minutes, seconds = divmod(int(time.time() - start_time), 60)
-                print(
-                    "You Win. "
-                    "It took you {} minutes and {} seconds.\n".format(minutes, seconds)
-                )
-                show_grid(grid)
-                if play_again():
-                    play_game()
-                return
-
-        show_grid(curr_grid)
-        print(message)
-
-
-play_game()
+        if play_again():
+            game = Game(width, height, number_of_mines)
+        else:
+            break
