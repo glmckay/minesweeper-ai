@@ -44,7 +44,8 @@ class Game:
 
         # The point is to store the player's grid as a 1-dim'l numpy array so that it
         # can easily be fed to a neural network.
-        self.player_grid = numpy.zeros((self.grid_size(width, height), 1))
+        # The network expects a (1, size)
+        self.player_grid = numpy.zeros((1, self.grid_size(width, height)))
 
         # Set as None since we generate it based on the first cell revealed
         self._true_grid = None
@@ -59,6 +60,10 @@ class Game:
     @property
     def player_won(self):
         return self.game_over and self.cells_hidden == self.number_of_mines
+
+    @property
+    def _player_grid(self):
+        return self.player_grid[0]
 
     def neighbours(self, coords: Coords):
         row_range = range(max(0, coords.row - 1), min(self.height, coords.row + 2))
@@ -98,23 +103,23 @@ class Game:
 
         cell_index = self._index(coords)
 
-        visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+        visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
         if visible:
             # cell is visible, nothing to do
             return True
 
         flag_index = cell_index + self.FLAGGED_OFFSET
-        flagged = self.player_grid[flag_index] == 1
+        flagged = self._player_grid[flag_index] == 1
 
-        self.player_grid[flag_index] = 0 if flagged else 1
+        self._player_grid[flag_index] = 0 if flagged else 1
         self.number_of_flags += -1 if flagged else 1
 
     def reveal_cell(self, coords: Coords):
         """Reveal the specified cell, and all adjacent cells if none contain mines"""
         cell_index = self._index(coords)
 
-        visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
-        flagged = self.player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+        visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+        flagged = self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
 
         if visible or flagged:
             # cell is visible or flagged, nothing to do
@@ -127,8 +132,8 @@ class Game:
             return
 
         self.cells_hidden -= 1
-        self.player_grid[cell_index + self.VISIBLE_OFFSET] = 1
-        self.player_grid[cell_index + self.ADJACENT_OFFSET] = true_value / 8
+        self._player_grid[cell_index + self.VISIBLE_OFFSET] = 1
+        self._player_grid[cell_index + self.ADJACENT_OFFSET] = true_value / 8
 
         if true_value == 0:
             # Reveal neighbours if no adjacent mines
@@ -169,11 +174,11 @@ class Game:
             row_string = f"{r+1:3} |"
             for c in range(self.width):
                 cell_index = self._index(Coords(r, c))
-                visible = self.player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+                visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
                 if visible or self.game_over:
                     row_string += f" {self._true_grid[r][c]} |"
                 else:
-                    is_flagged = self.player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+                    is_flagged = self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
                     row_string += f" F |" if is_flagged else "   |"
 
             print(row_string)

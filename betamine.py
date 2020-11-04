@@ -1,5 +1,4 @@
 import component.agent as agent
-import numpy
 from minesweeper import Game, Coords
 
 import random
@@ -7,7 +6,7 @@ import random
 game_options = {
     "width": 10,
     "height": 10,
-    "number_of_mines": 1,
+    "number_of_mines": 17,
 }
 
 
@@ -23,7 +22,7 @@ game = Game(**game_options)
 while not game.game_over:
     game.print()
 
-    grid_prob = network.evaluate(game.player_grid.transpose())
+    grid_prob = network.evaluate(game.player_grid)
     # index = numpy.argmax(grid_prob[-1])
     index = random.choices(
         range(200),
