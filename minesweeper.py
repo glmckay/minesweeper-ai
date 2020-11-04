@@ -44,13 +44,21 @@ class Game:
 
         # The point is to store the player's grid as a 1-dim'l numpy array so that it
         # can easily be fed to a neural network.
-        self.player_grid = numpy.zeros((width * height * self.props_per_cell, 1))
+        self.player_grid = numpy.zeros((self.grid_size(width, height), 1))
 
         # Set as None since we generate it based on the first cell revealed
         self._true_grid = None
 
     def _index(self, coords: Coords):
         return (coords.row * self.width + coords.col) * self.props_per_cell
+
+    @classmethod
+    def grid_size(cls, width: int, height: int):
+        return width * height * cls.props_per_cell
+
+    @property
+    def player_won(self):
+        return self.game_over and self.cells_hidden == self.number_of_mines
 
     def neighbours(self, coords: Coords):
         row_range = range(max(0, coords.row - 1), min(self.height, coords.row + 2))
@@ -85,7 +93,7 @@ class Game:
         for r, c in mines:
             self._true_grid[r][c] = Game.MINE
 
-    def toggle_flag(self, coords: Coords):
+    def flag_cell(self, coords: Coords):
         """Toggles the flag at the specified cell"""
 
         cell_index = self._index(coords)

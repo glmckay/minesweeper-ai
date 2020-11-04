@@ -1,22 +1,49 @@
-from agent import agent
+import component.agent as agent
 import numpy
-import minesweeper
+from minesweeper import Game, Coords
+
+import random
+
+game_options = {
+    "width": 10,
+    "height": 10,
+    "number_of_mines": 1,
+}
 
 
-width = 10
-height = 10
+def init_agent(width: int, height: int, **kwargs):
+    move_space_size = width * height * 2
+
+    return agent.Network([Game.grid_size(width, height), move_space_size])
 
 
-def init_agent():
-    ai = agent.Network([width * height * 3, width * height * 2])
+network = init_agent(**game_options)
+game = Game(**game_options)
+
+while not game.game_over:
+    game.print()
+
+    grid_prob = network.evaluate(game.player_grid.transpose())
+    # index = numpy.argmax(grid_prob[-1])
+    index = random.choices(
+        range(200),
+        weights=grid_prob[-1].transpose()
+    )[0]
+
+    toggle_flag, position = divmod(index, game.width * game.height)
+
+    print(f"PLaying move: {divmod(position, game.width)}" + ("+flag" if toggle_flag else ""))
+    game.process_move(Coords(*divmod(position, game.width)), toggle_flag)
 
 
-def play_move(ai, curr_grid):
-    grid_prob = ai.evaluate(curr_grid)
-    index = numpy.argmax(grid_prob)
+game.print()
 
-    position, toggle_flag = divmod(index, width * height)
-    return minesweeper.Coords(*divmod(position, width)), toggle_flag
+if game.player_won:
+    print("WOW! The network actually won!")
+else:
+    print("unlucky")
+    cost = ""
 
-    # cost = (TrueBoard - flagBoard) + 0.1*moves -> delta
+# game is over, spank network for losing
+# cost = (TrueBoard - flagBoard) + 0.1*moves -> delta
 
