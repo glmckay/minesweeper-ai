@@ -26,8 +26,13 @@ for i in range(100):
 
         grid_prob = network.evaluate(game.player_grid)
         #index = numpy.argmax(grid_prob[-1])
+
+        grid_size = game.width * game.height
+        valid_tiles = {i for i in range(len(game._player_grid)) if game._player_grid[i * 3] == 0}
+        valid_indices = valid_tiles | {i + grid_size for i in valid_tiles}
+
         index = random.choices(
-            range(game.width*game.height*2),
+            valid_indices,
             weights=grid_prob[-1].transpose()
         )[0]
 
