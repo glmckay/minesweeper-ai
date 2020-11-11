@@ -49,17 +49,18 @@ class Network:
 
         return outputs
 
-    def backpropagation(self, delta):
+    def backpropagation(self, outputs, delta):
         """backpropogation algorithm, returning the gradient of the cost function"""
-        outputs = self.evaluate(inputs)
+        # outputs = self.evaluate(inputs)
 
         # row vector of 1s
-        ones = numpy.ones((1, len(inputs)))
+        ones = numpy.ones((1, 1))
 
         # initialise variables
         # # delta, initialised with (output - label) \odot modifier (see costfunctions.Cost class)
         # delta = self.cost.deltaInit(outputs[-1], labels)
         # nabla
+
         nabla = []
 
         # iterating backwards
@@ -79,19 +80,20 @@ class Network:
 
         return nabla
 
-    def updateWeights(self, inputs, labels, total, learningRate=1, regularisation=0):
+    def updateWeights(self, outputs, delta, learningRate=1, regularisation=0):
         """updates the weights of the network by gradient descent"""
-        assert len(inputs) == len(labels)
-        n = len(inputs)
+        # assert len(inputs) == len(labels)
+        # n = len(inputs)
 
         # backpropagate
-        nabla = self.backpropagation(inputs, labels)
+        nabla = self.backpropagation(outputs, delta)
 
         # calculated new weight
         for W, V in zip(self.weights, nabla):
-            # biases are ignored when tweaking according to regularisation
-            if regularisation:
-                W[:-1, :] *= 1 - ((learningRate * regularisation) / total)
-            # new weight = regularised old weight - \frac{learningRate}{n} nabla
-            W -= (learningRate * V) / n
+            # # biases are ignored when tweaking according to regularisation
+            # if regularisation:
+            #     W[:-1, :] *= 1 - ((learningRate * regularisation) / total)
+            # # new weight = regularised old weight - \frac{learningRate}{n} nabla
+            W -= (learningRate * V) 
+
 

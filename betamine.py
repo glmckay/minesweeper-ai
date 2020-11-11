@@ -1,12 +1,12 @@
 import component.agent as agent
 from minesweeper import Game, Coords
-
+import numpy
 import random
 
 game_options = {
-    "width": 10,
-    "height": 10,
-    "number_of_mines": 17,
+    "width": 5,
+    "height": 5,
+    "number_of_mines": 1,
 }
 
 
@@ -17,31 +17,39 @@ def init_agent(width: int, height: int, **kwargs):
 
 
 network = init_agent(**game_options)
-game = Game(**game_options)
 
-while not game.game_over:
-    game.print()
+for i in range(100):
+    game = Game(**game_options)
 
-    grid_prob = network.evaluate(game.player_grid)
-    # index = numpy.argmax(grid_prob[-1])
-    index = random.choices(
-        range(200),
-        weights=grid_prob[-1].transpose()
-    )[0]
+    while not game.game_over:
+        # game.print()
 
-    toggle_flag, position = divmod(index, game.width * game.height)
+        grid_prob = network.evaluate(game.player_grid)
+        #index = numpy.argmax(grid_prob[-1])
+        index = random.choices(
+            range(game.width*game.height*2),
+            weights=grid_prob[-1].transpose()
+        )[0]
 
-    print(f"PLaying move: {divmod(position, game.width)}" + ("+flag" if toggle_flag else ""))
-    game.process_move(Coords(*divmod(position, game.width)), toggle_flag)
+        toggle_flag, position = divmod(index, game.width * game.height)
+
+        # print(f"PLaying move: {divmod(position, game.width)}" + ("+flag" if toggle_flag else ""))
+        game.process_move(Coords(*divmod(position, game.width)), toggle_flag)
 
 
-game.print()
+    # game.print()
 
-if game.player_won:
-    print("WOW! The network actually won!")
-else:
-    print("unlucky")
-    cost = ""
+    if game.player_won:
+        # print("WOW! The network actually won!")
+        pass
+    else:
+        # print("unlucky")
+        cost = numpy.zeros((game.width*game.height*2, 1))
+        cost[index] = 1
+        delta = grid_prob[-1] - cost
+        network.updateWeights(grid_prob,delta)
+
+
 
 # game is over, spank network for losing
 # cost = (TrueBoard - flagBoard) + 0.1*moves -> delta

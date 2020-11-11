@@ -127,7 +127,7 @@ class Game:
 
         true_value = self._true_grid[coords.row][coords.col]
         if true_value == Game.MINE:
-            # Unlucky...
+            # Unlucky... 
             self.game_over = True
             return
 
@@ -185,6 +185,9 @@ class Game:
             print(horizontal)
 
         print("")
+
+    # def cost(self):
+    #     return self.number_of_mines - self.cells_hidden 
 
 
 def play_again():
@@ -251,3 +254,4 @@ def play_game(width: int = 10, height: int = 10, number_of_mines: int = 10):
             game = Game(width, height, number_of_mines)
         else:
             break
+
