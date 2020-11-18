@@ -29,7 +29,9 @@ class Game:
     ADJACENT_OFFSET = 1
     FLAGGED_OFFSET = 2
 
-    def __init__(self, width: int, height: int, number_of_mines: int):
+    def __init__(
+        self, width: int, height: int, number_of_mines: int, initial_moves: int = 0
+    ):
 
         # basic sanity check, reasonable games should never be close to this
         assert number_of_mines <= width * height - 9
@@ -50,8 +52,14 @@ class Game:
         # Set as None since we generate it based on the first cell revealed
         self._true_grid = None
 
+        if initial_moves != 0:
+            self.initialise_grid(initial_cell=None, initial_moves=initial_moves)
+
+    def _raw_index(self, row: int, col: int):
+        return (row * self.width + col) * self.props_per_cell
+
     def _index(self, coords: Coords):
-        return (coords.row * self.width + coords.col) * self.props_per_cell
+        return self._raw_index(coords.row, coords.col)
 
     @classmethod
     def grid_size(cls, width: int, height: int):
@@ -65,6 +73,10 @@ class Game:
     def _player_grid(self):
         return self.player_grid[0]
 
+    @property
+    def initialized(self):
+        return self._true_grid is not None
+
     def neighbours(self, coords: Coords):
         row_range = range(max(0, coords.row - 1), min(self.height, coords.row + 2))
         col_range = range(max(0, coords.col - 1), min(self.width, coords.col + 2))
@@ -74,17 +86,21 @@ class Game:
             if r != coords.row or c != coords.col
         )
 
-    def initialise_grid(self, initial_cell: Coords):
+    def initialise_grid(self, initial_cell: Coords = None, initial_moves: int = 0):
         """Setup the grid so that the first cell has desirable properties"""
+
+        all_cells = [
+            Coords(r, c) for r, c in product(range(self.height), range(self.width))
+        ]
+
+        if initial_cell is None:
+            initial_cell = random.choice(all_cells)
 
         def allowed(cell):
             # We don't allow mines to be on or adjacent to the initial cell
             return initial_cell != cell and not initial_cell.adjacent(cell)
 
         # Pick mines from allowed cells
-        all_cells = (
-            Coords(r, c) for r, c in product(range(self.height), range(self.width))
-        )
         mines = random.sample(list(filter(allowed, all_cells)), self.number_of_mines)
 
         # The true grid can be something easier to work with
@@ -97,6 +113,12 @@ class Game:
 
         for r, c in mines:
             self._true_grid[r][c] = Game.MINE
+
+        if initial_moves > 0:
+            safe_cells = [cell for cell in all_cells if cell not in mines]
+            moves = random.sample(safe_cells, initial_moves)
+            for move in moves:
+                self.reveal_cell(move)
 
     def flag_cell(self, coords: Coords):
         """Toggles the flag at the specified cell"""
@@ -127,7 +149,7 @@ class Game:
 
         true_value = self._true_grid[coords.row][coords.col]
         if true_value == Game.MINE:
-            # Unlucky... 
+            # Unlucky...
             self.game_over = True
             return
 
@@ -145,7 +167,7 @@ class Game:
         A move is either revealing a cell or toggling a flag on a cell.
         """
 
-        if self._true_grid is None:
+        if not self.initialized:
             # First move
             self.initialise_grid(coords)
             self.reveal_cell(coords)
@@ -157,6 +179,23 @@ class Game:
         if self.cells_hidden == self.number_of_mines:
             # Victory!
             self.game_over = True
+
+    def _random_safe_tiles(self, num_tiles: int):
+        """Generate the coordinates of a random, safe tile"""
+
+        if not self.initialized:
+            return Coords(
+                random.randint(0, self.height - 1), random.randint(0, self.width - 1)
+            )
+        else:
+            safe_tiles = [
+                Coords(r, c)
+                for r in range(self.height)
+                for c in range(self.width)
+                if self._player_grid[self._raw_index(r, c) + Game.VISIBLE_OFFSET] == 0
+                and self._true_grid[r][c] != Game.MINE
+            ]
+            return random.sample(safe_tiles, num_tiles)
 
     def print(self):
         """Prints the game's board.
@@ -178,7 +217,9 @@ class Game:
                 if visible or self.game_over:
                     row_string += f" {self._true_grid[r][c]} |"
                 else:
-                    is_flagged = self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+                    is_flagged = (
+                        self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+                    )
                     row_string += f" F |" if is_flagged else "   |"
 
             print(row_string)
@@ -187,7 +228,7 @@ class Game:
         print("")
 
     # def cost(self):
-    #     return self.number_of_mines - self.cells_hidden 
+    #     return self.number_of_mines - self.cells_hidden
 
 
 def play_again():
@@ -254,4 +295,3 @@ def play_game(width: int = 10, height: int = 10, number_of_mines: int = 10):
             game = Game(width, height, number_of_mines)
         else:
             break
-
