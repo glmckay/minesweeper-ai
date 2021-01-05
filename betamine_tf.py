@@ -1,18 +1,18 @@
 import tensorflow as tf
 import numpy
-from minesweeper import Game, Coords
+from minesweeper_tf import Game, Coords
 import random
 from Game_Generation import create_states
 
 game_options = {
-    "width": 10,
-    "height": 10,
-    "number_of_mines": 10,
+    "width": 4,
+    "height": 4,
+    "number_of_mines": 2,
 }
 
 convolutionlayer_model = tf.keras.Sequential(
     [
-        tf.keras.layers.Reshape((10,10,1)),
+        # tf.keras.layers.Reshape((10,10,1)),
         tf.keras.layers.Conv2D(filters= 9, kernel_size=3),
         tf.keras.layers.MaxPool2D(pool_size=2),
         tf.keras.layers.Flatten(),
@@ -21,14 +21,14 @@ convolutionlayer_model = tf.keras.Sequential(
 
 convolutionlayer_model.compile(
     optimizer = tf.keras.optimizers.SGD(learning_rate = 0.2),
-    loss = tf.keras.losses.Poisson(),
+    loss = tf.keras.losses.MeanSquaredError(),
     metrics = ['accuracy']
 )
 
-training_states = create_states(number_of_games = 1000)
-evaluation_states = create_states(number_of_games = 100)
+training_states = create_states(number_of_games = 1000, **game_options)
+evaluation_states = create_states(number_of_games = 100, **game_options)
 
-#  convolutionlayer_model.predict(training_states[0][0].transpose())
+# convolutionlayer_model.predict(training_states[0][0].transpose())
 
 convolutionlayer_model.fit( training_states[0] , training_states[1], batch_size = 64, epochs = 10)
 

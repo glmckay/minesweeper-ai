@@ -111,7 +111,7 @@ class Game:
             safe_cells = [cell for cell in all_cells if cell not in mines]
             moves = random.sample(safe_cells, initial_moves)
             for move in moves:
-                self.reveal_cell(move)
+                self.process_move(move)
 
     def flag_cell(self, coords: Coords):
         """Toggles the flag at the specified cell"""
@@ -153,7 +153,7 @@ class Game:
             for other in self.neighbours(coords):
                 self.reveal_cell(other)
 
-    def process_move(self, coords: Coords, toggle_flag: bool):
+    def process_move(self, coords: Coords, toggle_flag: bool=False):
         """Process a single move.
         A move is either revealing a cell or toggling a flag on a cell.
         """
@@ -176,7 +176,7 @@ class Game:
             Coords(r, c)
             for r in range(self.height)
             for c in range(self.width)
-            if self.player_grid[r, c, Game.VISIBLE_OFFSET] == 0
+            if self.player_grid[r, c, Game.VISIBLE_INDEX] == 0
         ]
 
     def _random_safe_tiles(self, num_tiles: int):
