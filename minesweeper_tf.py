@@ -58,12 +58,6 @@ class Game:
         if initial_moves != 0:
             self.initialise_grid(initial_cell=None, initial_moves=initial_moves)
 
-    def _raw_index(self, row: int, col: int):
-        return (row * self.width + col) * self.props_per_cell
-
-    def _index(self, coords: Coords):
-        return self._raw_index(coords.row, coords.col)
-
     @classmethod
     def grid_size(cls, width: int, height: int):
         return width * height * cls.props_per_cell
@@ -71,10 +65,6 @@ class Game:
     @property
     def player_won(self):
         return self.game_over and self.cells_hidden == self.number_of_mines
-
-    @property
-    def _player_grid(self):
-        return self.player_grid[0]
 
     @property
     def initialized(self):
@@ -180,6 +170,14 @@ class Game:
         if self.cells_hidden == self.number_of_mines:
             # Victory!
             self.game_over = True
+
+    def valid_moves(self):
+        return [
+            Coords(r, c)
+            for r in range(self.height)
+            for c in range(self.width)
+            if self.player_grid[r, c, Game.VISIBLE_OFFSET] == 0
+        ]
 
     def _random_safe_tiles(self, num_tiles: int):
         """Generate the coordinates of a random, safe tile"""
