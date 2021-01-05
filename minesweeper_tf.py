@@ -21,13 +21,12 @@ class Coords(NamedTuple):
 
 class Game:
 
-    props_per_cell = 3
+    props_per_cell = 2
 
     MINE = "M"
 
-    VISIBLE_OFFSET = 0
-    ADJACENT_OFFSET = 1
-    FLAGGED_OFFSET = 2
+    VISIBLE_INDEX = 0
+    ADJACENT_INDEX = 1
 
     def __init__(
         self, width: int, height: int, number_of_mines: int, initial_moves: int = 0
@@ -44,10 +43,14 @@ class Game:
         self.number_of_flags = 0
         self.game_over = False
 
-        # The point is to store the player's grid as a 1-dim'l numpy array so that it
+        # The point is to store the player's grid as a 3-dim'l numpy array so that it
         # can easily be fed to a neural network.
-        # The network expects a (1, size)
-        self.player_grid = numpy.zeros((1, self.grid_size(width, height)))
+        # The network expects a (height, width, 2) array with the last dimenstion
+        # containing the visibility and adjacency values for the corresponding cell
+        self.player_grid = numpy.zeros((height, width, Game.props_per_cell))
+
+        # The networks won't need to flag anything, so we store this separately
+        self.flag_grid = numpy.zeros((height, width))
 
         # Set as None since we generate it based on the first cell revealed
         self._true_grid = None
@@ -123,25 +126,23 @@ class Game:
     def flag_cell(self, coords: Coords):
         """Toggles the flag at the specified cell"""
 
-        cell_index = self._index(coords)
-
-        visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+        visible = self.player_grid[coords][Game.VISIBLE_INDEX]
         if visible:
             # cell is visible, nothing to do
             return True
 
-        flag_index = cell_index + self.FLAGGED_OFFSET
-        flagged = self._player_grid[flag_index] == 1
+        flagged = self.flag_grid[coords] == 1
 
-        self._player_grid[flag_index] = 0 if flagged else 1
+        self.flag_grid[coords] = 0 if flagged else 1
         self.number_of_flags += -1 if flagged else 1
 
     def reveal_cell(self, coords: Coords):
         """Reveal the specified cell, and all adjacent cells if none contain mines"""
-        cell_index = self._index(coords)
 
-        visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
-        flagged = self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
+        cell = self.player_grid[coords]
+
+        visible = cell[Game.VISIBLE_INDEX]
+        flagged = self.flag_grid[coords]
 
         if visible or flagged:
             # cell is visible or flagged, nothing to do
@@ -154,8 +155,8 @@ class Game:
             return
 
         self.cells_hidden -= 1
-        self._player_grid[cell_index + self.VISIBLE_OFFSET] = 1
-        self._player_grid[cell_index + self.ADJACENT_OFFSET] = true_value / 8
+        cell[Game.VISIBLE_INDEX] = 1
+        cell[Game.ADJACENT_INDEX] = true_value / 8
 
         if true_value == 0:
             # Reveal neighbours if no adjacent mines
@@ -192,7 +193,7 @@ class Game:
                 Coords(r, c)
                 for r in range(self.height)
                 for c in range(self.width)
-                if self._player_grid[self._raw_index(r, c) + Game.VISIBLE_OFFSET] == 0
+                if self.player_grid[r, c, Game.VISIBLE_INDEX] == 0
                 and self._true_grid[r][c] != Game.MINE
             ]
             return random.sample(safe_tiles, num_tiles)
@@ -212,23 +213,17 @@ class Game:
         for r in range(self.height):
             row_string = f"{r+1:3} |"
             for c in range(self.width):
-                cell_index = self._index(Coords(r, c))
-                visible = self._player_grid[cell_index + self.VISIBLE_OFFSET] == 1
+                visible = self.player_grid[r, c, Game.VISIBLE_INDEX] == 1
                 if visible or self.game_over:
                     row_string += f" {self._true_grid[r][c]} |"
                 else:
-                    is_flagged = (
-                        self._player_grid[cell_index + self.FLAGGED_OFFSET] == 1
-                    )
-                    row_string += f" F |" if is_flagged else "   |"
+                    is_flagged = self.flag_grid[r, c] == 1
+                    row_string += " F |" if is_flagged else "   |"
 
             print(row_string)
             print(horizontal)
 
         print("")
-
-    # def cost(self):
-    #     return self.number_of_mines - self.cells_hidden
 
 
 def play_again():
