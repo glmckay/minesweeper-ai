@@ -1,5 +1,6 @@
 """A command line version of Minesweeper"""
 
+from copy import deepcopy
 import numpy
 import random
 import re
@@ -57,6 +58,16 @@ class Game:
 
         if initial_moves != 0:
             self.initialise_grid(initial_cell=None, initial_moves=initial_moves)
+
+    def __deepcopy__(self, memo):
+        new = Game(self.width, self.height, self.number_of_mines)
+
+        new.player_grid = numpy.copy(self.player_grid)
+        new.flag_grid = numpy.copy(self.flag_grid)
+        new._true_grid = deepcopy(self._true_grid)
+
+        memo[id(self)] = new
+        return new
 
     @classmethod
     def grid_size(cls, width: int, height: int):
