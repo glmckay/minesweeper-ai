@@ -11,6 +11,13 @@ def non_losing_indices(state):
     ]
 
 
+def move_from_output(state, output):
+    valid_outputs = (
+        (output[m.row * state.width + m.col], m) for m in state.valid_moves()
+    )
+    return min(valid_outputs)[1]
+
+
 def create_states(
     width: int = 10,
     height: int = 10,
@@ -42,6 +49,7 @@ def create_test_state_pairs(**kwargs):
     width = kwargs["width"]
     height = kwargs["height"]
     number_of_games = kwargs["number_of_games"]
+    number_of_mines = kwargs["number_of_mines"]
 
     game_states = numpy.ndarray(shape=(number_of_games, width, height, 1))
     game_solutions = numpy.ndarray(shape=(number_of_games, width * height))
@@ -55,7 +63,7 @@ def create_test_state_pairs(**kwargs):
         for row in range(height):
             for col in range(width):
                 if state._true_grid[row][col] == Game.MINE:
-                    desired[row * width + col] = 1
+                    desired[row * width + col] = 1 / number_of_mines
         # valid_non_mines = non_losing_indices(state)
         # for coords in valid_non_mines:
         #     desired[coords.row * state.width + coords.col] = 1 / len(valid_non_mines)
@@ -66,7 +74,6 @@ def create_test_state_pairs(**kwargs):
 
 
 def test_model(model, states):
-    width = states[0].width
 
     inputs = numpy.array([state.player_grid[:, :, 1:] for state in states])
 
@@ -76,11 +83,7 @@ def test_model(model, states):
     total = 0
     for state, output in zip(states, outputs):
 
-        valid_outputs = [
-            (output[m.row * width + m.col], m) for m in state.valid_moves()
-        ]
-        move = min(valid_outputs)[1]
-        state.process_move(move)
+        state.process_move(move_from_output(state, output))
 
         total += 1
         if not state.game_over:
@@ -88,4 +91,26 @@ def test_model(model, states):
     print(
         f"Model did not game over in {successes} out of {len(states)} games "
         f"({successes / total * 100:.3f} %)"
+    )
+
+
+def test_against_game(model, number_of_games, game_args):
+    wins = 0
+
+    games = [Game(**game_args) for i in range(number_of_games)]
+
+    while len(games) > 0:
+        inputs = numpy.array([game.player_grid[:, :, 1:] for game in games])
+        outputs = model(inputs)
+        for game, output in zip(games, outputs):
+            game.process_move(move_from_output(game, output))
+
+            if game.player_won:
+                wins += 1
+
+        games = [game for game in games if not game.game_over]
+
+    print(
+        f"Model won {wins} out of {number_of_games} games "
+        f"({wins / number_of_games * 100:.3f} %)"
     )
