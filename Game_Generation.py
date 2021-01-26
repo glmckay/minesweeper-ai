@@ -11,6 +11,14 @@ def non_losing_indices(state):
     ]
 
 
+def print_output(output):
+    """Convenience function to print the output in a readable way"""
+    for i in range(5):
+        for j in range(5):
+            print(f"{output[0][i*5+j]:.5f}", end=" ")
+        print()
+
+
 def move_from_output(state, output):
     valid_outputs = (
         (output[m.row * state.width + m.col], m) for m in state.valid_moves()
@@ -51,13 +59,13 @@ def create_test_state_pairs(**kwargs):
     number_of_games = kwargs["number_of_games"]
     number_of_mines = kwargs["number_of_mines"]
 
-    game_states = numpy.ndarray(shape=(number_of_games, width, height, 1))
+    game_states = numpy.ndarray(shape=(number_of_games, width, height, 2))
     game_solutions = numpy.ndarray(shape=(number_of_games, width * height))
 
     state_generator = create_states(**kwargs)
 
     for i, state in enumerate(state_generator):
-        game_states[i] = state.player_grid[:, :, 1:]
+        game_states[i] = state.player_grid
 
         desired = numpy.zeros((width * height,))
         for row in range(height):
@@ -75,7 +83,7 @@ def create_test_state_pairs(**kwargs):
 
 def test_model(model, states):
 
-    inputs = numpy.array([state.player_grid[:, :, 1:] for state in states])
+    inputs = numpy.array([state.player_grid for state in states])
 
     outputs = model.predict(inputs)
 
@@ -100,7 +108,7 @@ def test_against_game(model, number_of_games, game_args):
     games = [Game(**game_args) for i in range(number_of_games)]
 
     while len(games) > 0:
-        inputs = numpy.array([game.player_grid[:, :, 1:] for game in games])
+        inputs = numpy.array([game.player_grid for game in games])
         outputs = model(inputs)
         for game, output in zip(games, outputs):
             game.process_move(move_from_output(game, output))
