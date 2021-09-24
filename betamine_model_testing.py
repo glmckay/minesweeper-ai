@@ -75,9 +75,14 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
 
                             for i in range(len(layers)):
                                 layer_type, layer_attributes = layers[i]
-                                results[f"Layer{i}_Name"] = layer_type.__name__
+                                results[f"Layer{i+1}_Name"].append(layer_type.__name__)
                                 for elem in layer_attributes:
-                                    results[f"Layer{i}_{elem}"] = "None" if layer_attributes[elem] == None else layer_attributes[elem]
+                                    if layer_attributes[elem] == None:
+                                        results[f"Layer{i+1}_{elem}"].append("None")
+                                    elif callable(layer_attributes[elem]):
+                                         results[f"Layer{i+1}_{elem}"].append(layer_attributes[elem].__name__)
+                                    else:
+                                        results[f"Layer{i+1}_{elem}"].append(layer_attributes[elem])
                             results["LearningRate"].append(learning_rate)
                             results["Optimizer"].append(optimizer.__name__)
                             results["Loss"].append(loss.__name__)
@@ -88,18 +93,26 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
     return pd.DataFrame(results)
 
 
-# Initialize the different parameters to test
+# Initialize the different parameters to test. Note, for layer structure, all of them must have the same number of layers and layer attributes (or else we can't construct the data frame because of different column size)
 test_parameters = {"layers_struct": [
-    [[tf.keras.layers.Dense, {"units": 20*n, "activation": tf.keras.activations.softmax}],
-        [tf.keras.layers.Dense, {"units": 10*n, "activation": tf.keras.activations.softmax}],
-        [tf.keras.layers.Dense, {"units": 5*n, "activation": tf.keras.activations.softmax}],
-        [tf.keras.layers.Dense, {"units": 1*n, "activation": None}]]
+    [[tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 1*n, "activation": None}]],
+    [[tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.sigmoid}]],
+    [[tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
+        [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.softmax}]]
         ],
-    "learning_rates": [0.5], 
-    "optimizers": [tf.keras.optimizers.Adam], 
-    "losses": [tf.keras.losses.CategoricalCrossentropy], 
+    "learning_rates": [0.1], 
+    "optimizers": [tf.keras.optimizers.SGD], 
+    "losses": [tf.keras.losses.MeanSquaredError], 
     "batches": [100], 
-    "epochs": [5]
+    "epochs": [3]
     }
 
 test_results = test_models(**test_parameters)
