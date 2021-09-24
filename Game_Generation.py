@@ -2,7 +2,7 @@ from minesweeper_tf import Game, Coords
 import numpy
 import random
 
-
+# function that returns all the coordinates that do not contain mines
 def non_losing_indices(state):
     return [
         coords
@@ -11,8 +11,8 @@ def non_losing_indices(state):
     ]
 
 
+# Convenience function to print the output in a readable way
 def print_output(output):
-    """Convenience function to print the output in a readable way"""
     for i in range(5):
         for j in range(5):
             print(f"{output[0][i*5+j]:.5f}", end=" ")
@@ -25,7 +25,7 @@ def move_from_output(state, output):
     )
     return min(valid_outputs)[1]
 
-
+# generate some numbers of game states (games with some random number of moves already played)
 def create_states(
     width: int = 10,
     height: int = 10,
@@ -52,7 +52,7 @@ def create_states(
                 break
         yield state
 
-
+# create multiple pairs of (game state, game_solutions)
 def create_test_state_pairs(**kwargs):
     width = kwargs["width"]
     height = kwargs["height"]
@@ -80,8 +80,8 @@ def create_test_state_pairs(**kwargs):
 
     return [game_states, game_solutions]
 
-
-def test_model(model, states):
+# calculates the success rate of the model (number of times it does not pick a mine at a particular game state)
+def test_model(model, states, to_print = 0):
 
     inputs = numpy.array([state.player_grid for state in states])
 
@@ -96,13 +96,16 @@ def test_model(model, states):
         total += 1
         if not state.game_over:
             successes += 1
-    print(
-        f"Model did not game over in {successes} out of {len(states)} games "
-        f"({successes / total * 100:.3f} %)"
-    )
+    if to_print == 0:
+        print(
+            f"Model did not game over in {successes} out of {len(states)} states "
+            f"({successes / total * 100:.3f} %)"
+        )
+    else:
+        return successes / total * 100
 
-
-def test_against_game(model, number_of_games, game_args):
+# finds the win rate of the model, that is the probability that the model finishes a full game
+def test_against_game(model, number_of_games, game_args, to_print = 0):
     wins = 0
 
     games = [Game(**game_args) for i in range(number_of_games)]
@@ -118,7 +121,10 @@ def test_against_game(model, number_of_games, game_args):
 
         games = [game for game in games if not game.game_over]
 
-    print(
-        f"Model won {wins} out of {number_of_games} games "
-        f"({wins / number_of_games * 100:.3f} %)"
-    )
+    if to_print == 0:
+        print(
+            f"Model won {wins} out of {number_of_games} games "
+            f"({wins / number_of_games * 100:.3f} %)"
+        )
+    else:
+        return wins / number_of_games * 100

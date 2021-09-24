@@ -3,7 +3,7 @@ from minesweeper import Game, Coords
 import numpy
 import random
 
-
+# initialize the game parameters
 game_options = {
     "width": 5,
     "height": 5,

@@ -1,3 +1,5 @@
+# A file that sets up the parameters of the network
+
 class Network:
     def __init__(self, layers):
         self.layers = layers
@@ -13,11 +15,6 @@ class Network:
         return outputs
 
     def backpropagation(self, outputs, delta):
-        # initialise variables
-        # delta, initialised with (output - label) \odot modifier
-        #   (see costfunctions.Cost class)
-        # delta = self.cost.deltaInit(outputs[-1], labels)
-
         nabla = []
         for layer, inputs in reversed(zip(self.layers, outputs)):
             nab, delta = layer.backpropagation(inputs, delta)
