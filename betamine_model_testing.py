@@ -43,16 +43,11 @@ with open("DataSets/EvalStates.pkl", 'rb') as eval_file:
 n = game_options["width"] * game_options["height"]
 
 # a function that creates a model based on different activations
-def create_model_list(activation1, activation2):
-    model = tf.keras.Sequential(
-        [
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(20 * n, activation = activation1),
-            tf.keras.layers.Dense(10 * n, activation = activation1),
-            tf.keras.layers.Dense(5 * n, activation = activation1),
-            tf.keras.layers.Dense(n,activation = activation2),
-        ]
-    )
+def create_model_list(layers):
+    sequence = [tf.keras.layers.Flatten()]
+    for layer_type,layer_attributes in layers:
+        sequence.append(layer_type(**layer_attributes))
+    model = tf.keras.Sequential(sequence)
     return model
 
 # a function that compiles a given model based on a chosen learning rate, optimizer and loss function
@@ -64,41 +59,47 @@ def compile_model(model, learning_rate, optimizer, loss):
     )
 
 # A function that creates a DataFrame containing the results of trying out various different parameters into the model
-def test_models(activations1, activations2, learning_rates, optimizers, losses, batches, epochs):
+def test_models(layers_struct, learning_rates, optimizers, losses, batches, epochs):
     results = defaultdict(list)
-    for activation1 in activations1:
-        for activation2 in activations2:
-            for learning_rate in learning_rates:
-                for optimizer in optimizers:
-                    for loss in losses:
-                        for batch in batches:
-                            for epoch in epochs:
-                                model = create_model_list(activation1, activation2)
-                                compile_model(model, learning_rate, optimizer, loss())
-                                model.fit(training_states[0], training_states[1], batch_size = batch, epochs = epoch)
-                                success_rate =  test_model(model, deepcopy(evaluation_states),1)
-                                win_rate = test_against_game(model, 1000, game_options,1)
+    for layers in layers_struct:
+        for learning_rate in learning_rates:
+            for optimizer in optimizers:
+                for loss in losses:
+                    for batch in batches:
+                        for epoch in epochs:
+                            model = create_model_list(layers)
+                            compile_model(model, learning_rate, optimizer, loss())
+                            model.fit(training_states[0], training_states[1], batch_size = batch, epochs = epoch)
+                            success_rate =  test_model(model, deepcopy(evaluation_states),1)
+                            win_rate = test_against_game(model, 1000, game_options,1)
 
-                                results["Activation1"].append(activation1.__name__)
-                                results["Activation2"].append("None" if activation2 == None else activation2.__name__)
-                                results["LearningRate"].append(learning_rate)
-                                results["Optimizer"].append(optimizer.__name__)
-                                results["Loss"].append(loss.__name__)
-                                results["Batch"].append(batch)
-                                results["Epoch"].append(epoch)
-                                results["SuccessRate"].append(success_rate)
-                                results["WinRate"].append(win_rate)
+                            for i in range(len(layers)):
+                                layer_type, layer_attributes = layers[i]
+                                results[f"Layer{i}_Name"] = layer_type.__name__
+                                for elem in layer_attributes:
+                                    results[f"Layer{i}_{elem}"] = "None" if layer_attributes[elem] == None else layer_attributes[elem]
+                            results["LearningRate"].append(learning_rate)
+                            results["Optimizer"].append(optimizer.__name__)
+                            results["Loss"].append(loss.__name__)
+                            results["Batch"].append(batch)
+                            results["Epoch"].append(epoch)
+                            results["SuccessRate"].append(success_rate)
+                            results["WinRate"].append(win_rate)
     return pd.DataFrame(results)
 
 
 # Initialize the different parameters to test
-test_parameters = {"activations1": [tf.keras.activations.tanh], 
-    "activations2": [tf.keras.activations.sigmoid], 
-    "learning_rates": [1], 
-    "optimizers": [tf.keras.optimizers.SGD], 
+test_parameters = {"layers_struct": [
+    [[tf.keras.layers.Dense, {"units": 20*n, "activation": tf.keras.activations.softmax}],
+        [tf.keras.layers.Dense, {"units": 10*n, "activation": tf.keras.activations.softmax}],
+        [tf.keras.layers.Dense, {"units": 5*n, "activation": tf.keras.activations.softmax}],
+        [tf.keras.layers.Dense, {"units": 1*n, "activation": None}]]
+        ],
+    "learning_rates": [0.5], 
+    "optimizers": [tf.keras.optimizers.Adam], 
     "losses": [tf.keras.losses.CategoricalCrossentropy], 
-    "batches": [30], 
-    "epochs": [3]
+    "batches": [100], 
+    "epochs": [5]
     }
 
 test_results = test_models(**test_parameters)
