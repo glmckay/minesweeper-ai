@@ -24,11 +24,6 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-""" Next Time:
-    Convolution layer to improve behavior with more complicated games?
-    Choosing better training examples? (idk, just writing ideas)
-"""
-
 # Initialize the game settings
 game_options = {
     "width": 5,
@@ -79,7 +74,7 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
                             print(f"Creating model with layers {layers}")
                             model = create_model_list(layers)
 
-                            print(f"compiling with loss {loss}, optimizer {optimizer} and learning rate {learning_rate}")
+                            print(f"compiling with loss {loss.__name__}, optimizer {optimizer.__name__} and learning rate {learning_rate}")
                             compile_model(model, learning_rate, optimizer, loss())
 
                             print(f"Fitting model with batch size {batch} in {epoch} epochs")
