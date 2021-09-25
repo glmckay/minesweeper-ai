@@ -12,11 +12,22 @@ def non_losing_indices(state):
 
 
 # Convenience function to print the output in a readable way
-def print_output(output):
-    for i in range(5):
-        for j in range(5):
-            print(f"{output[0][i*5+j]:.5f}", end=" ")
-        print()
+def print_output(output,width = 5, height = 5):
+    # for i in range(width):
+    #     for j in range(height):
+    #         print(f"{output[0][i*height+j]*100:.3f}", end=" ")
+    #     print()
+    top_label = "    " + "".join(f"{c:6} " for c in range(width))
+    horizontal = "   " + (8 * width * "-") + "-"
+    print(top_label)
+    print(horizontal)
+    for r in range(height):
+        row_string = f"{r:3} |"
+        for c in range(width):
+            row_string += f"{output[0][r*height+c]*100:.3f} |"
+
+        print(row_string)
+        print(horizontal)
 
 
 def move_from_output(state, output):
@@ -27,9 +38,9 @@ def move_from_output(state, output):
 
 # generate some numbers of game states (games with some random number of moves already played)
 def create_states(
-    width: int = 10,
-    height: int = 10,
-    number_of_mines: int = 10,
+    width: int = 5,
+    height: int = 5,
+    number_of_mines: int = 6,
     initial_move_weights=None,
     number_of_games: int = 10000,
 ):

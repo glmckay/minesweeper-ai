@@ -122,7 +122,7 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
 } """
 
 # A function that calls on generates the results from varies test parameters and stores the results in a csv file
-def test_model_parameters(test_parameters):
+def test_parameters_to_csv(test_parameters):
     test_results = test_models(**test_parameters)
 
     # add the results to previously computed ones
@@ -180,7 +180,7 @@ def csv_to_model(row):
 def best_model():
     # import the previously computed results
     results = pd.read_csv("Results/TrainingResults.csv")
-    
+
     row = results.iloc[results["SuccessRate"].idxmax()]
     print(row)
     model = csv_to_model(row)

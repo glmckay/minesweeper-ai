@@ -213,14 +213,14 @@ class Game:
         """
 
         # Print top column letters
-        top_label = "     " + "".join(f"{c+1:3} " for c in range(self.width))
+        top_label = "     " + "".join(f"{c:3} " for c in range(self.width))
         horizontal = "   " + (4 * self.width * "-") + "-"
 
         print(top_label)
         print(horizontal)
 
         for r in range(self.height):
-            row_string = f"{r+1:3} |"
+            row_string = f"{r:3} |"
             for c in range(self.width):
                 visible = self.player_grid[r, c, Game.VISIBLE_INDEX] == 1
                 if visible or self.game_over:
@@ -255,8 +255,10 @@ def get_move(width: int, height: int, mines_left: int):
         if user_input == "help":
             print(usage)
         elif match:
-            row = int(match.group(1)) - 1
-            col = int(match.group(2)) - 1
+            # row = int(match.group(1)) - 1
+            # col = int(match.group(2)) - 1
+            row = int(match.group(1)) 
+            col = int(match.group(2)) 
             toggle_flag = bool(match.group(3))
 
             if 0 <= row < height and 0 <= col < width:
@@ -268,7 +270,7 @@ def get_move(width: int, height: int, mines_left: int):
             print(usage)
 
 
-def play_game(width: int = 10, height: int = 10, number_of_mines: int = 10):
+def play_game(width: int = 5, height: int = 5, number_of_mines: int = 6):
 
     while True:
 
