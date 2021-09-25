@@ -140,7 +140,7 @@ test_results = test_models(**test_parameters)
 
 # add the results to previously computed ones
 previous_result = pd.read_csv("Results/TrainingResults.csv")
-test_results = pd.concat([test_results, previous_result]).drop_duplicates().reset_index(drop=True)
+test_results = pd.concat([test_results, previous_result]).drop_duplicates(subset=list(test_results.columns)[:-2], keep="last").reset_index(drop=True)
 
 # save the results
 test_results.to_csv("Results/TrainingResults.csv", index=False)
