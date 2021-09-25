@@ -19,7 +19,25 @@ To play the game, simply enter: `<row,column>` (eg. `<3,4>`) or to toggle a flag
 
 
 # Model Creation
-To create a model with parameters with the highest successrate (these data are all stored in Results/TrainingResults.csv), input
+To create a model, run 
+>model = csv_to_model(**parameter)
+
+where a sample parameter is the following:
+```Python
+test_parameters = {
+    "layers_struct": [[
+            [tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
+            [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
+            [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
+            [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.sigmoid}]]],
+    "learning_rates": [1],
+    "optimizers": [tf.keras.optimizers.SGD], 
+    "losses": [tf.keras.losses.CategoricalCrossentropy],
+    "batches": [100],
+    "epochs": [10]
+}
+```
+To create a model with parameters that give the highest successrate (out of all the parameters that we tested and stored in Results/TrainingResults.csv), run
 >model = best_model()
 
 
