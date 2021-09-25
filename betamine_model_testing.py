@@ -1,5 +1,7 @@
 from copy import deepcopy
 import os
+
+from tensorflow.python.ops.gen_math_ops import sigmoid
 from Game_Generation import (
     create_states,
     create_test_state_pairs,
@@ -74,13 +76,13 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
                             print(f"Creating model with layers {layers}")
                             model = create_model_list(layers)
 
-                            print(f"compiling with loss {loss.__name__}, optimizer {optimizer.__name__} and learning rate {learning_rate}")
+                            print(f"Compiling with loss {loss.__name__}, optimizer {optimizer.__name__} and learning rate {learning_rate}")
                             compile_model(model, learning_rate, optimizer, loss())
 
                             print(f"Fitting model with batch size {batch} in {epoch} epochs")
                             model.fit(training_states[0], training_states[1], batch_size = batch, epochs = epoch)
-                            success_rate =  test_model(model, deepcopy(evaluation_states), 1)
-                            win_rate = test_against_game(model, 1000, game_options, 1)
+                            success_rate =  test_model(model, deepcopy(evaluation_states))
+                            win_rate = test_against_game(model, 1000, game_options)
 
                             for i in range(len(layers)):
                                 layer_type, layer_attributes = layers[i]
@@ -102,41 +104,89 @@ def test_models(layers_struct, learning_rates, optimizers, losses, batches, epoc
     return pd.DataFrame(results)
 
 
-# Initialize the different parameters to test. Note, for layer structure, all of them must have the same number of layers and layer attributes (or else we can't construct the data frame because of different column size)
-test_parameters = {
+# Sample format for the different parameters to test for the test_models function above. Note, for layer structure, all of them must have the same number of layers and layer attributes (or else we can't construct the data frame because of different column size)
+""" test_parameters = {
     "layers_struct": [
         [
             [tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
             [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
             [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 1*n, "activation": None}]
-        ],
-        [
-            [tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
             [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.sigmoid}]
-        ],
-        [
-            [tf.keras.layers.Dense, {"units": 20*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 10*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
-            [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.softmax}]
         ]
     ],
-    "learning_rates": [1, 0.1, 0.01],
+    "learning_rates": [1],
     "optimizers": [tf.keras.optimizers.SGD], 
-    "losses": [tf.keras.losses.MeanSquaredError, tf.keras.losses.CategoricalCrossentropy],
-    "batches": [30, 100],
-    "epochs": [3, 5]
-}
+    "losses": [tf.keras.losses.CategoricalCrossentropy],
+    "batches": [100],
+    "epochs": [10]
+} """
 
-test_results = test_models(**test_parameters)
+# A function that calls on generates the results from varies test parameters and stores the results in a csv file
+def test_model_parameters(test_parameters):
+    test_results = test_models(**test_parameters)
 
-# add the results to previously computed ones
-previous_result = pd.read_csv("Results/TrainingResults.csv")
-test_results = pd.concat([test_results, previous_result]).drop_duplicates(subset=list(test_results.columns)[:-2], keep="last").reset_index(drop=True)
+    # add the results to previously computed ones
+    previous_result = pd.read_csv("Results/TrainingResults.csv")
 
-# save the results
-test_results.to_csv("Results/TrainingResults.csv", index=False)
+    test_results = pd.concat([test_results, previous_result])
+
+    subset = list(test_results.columns)
+    subset.remove("SuccessRate")
+    subset.remove("WinRate")
+    test_results = test_results.drop_duplicates(subset=subset, keep="last").reset_index(drop=True)
+
+    # save the results
+    test_results.to_csv("Results/TrainingResults.csv", index=False)
+
+
+# A function that reads in a row from the TrainingResults.csv file, and outputs the corresponding model
+# There must be a better way to input the layer type than how it's done here. However, tf.keras.layers is not callable...
+def csv_to_model(row):
+    layer_type = {
+        "Dense": tf.keras.layers.Dense
+    }
+    Optimize = {
+        "SGD": tf.keras.optimizers.SGD,
+        "Adam": tf.keras.optimizers.Adam
+    }
+    layers = []
+    k = 1
+    # reconstruct all the parameters for the layers
+    while f"Layer{k}_Name" in row.index and row[f"Layer{k}_Name"] != None:
+        columns = [col for col in row.index if col.startswith(f"Layer{k}")]
+        length = len(f"Layer{k}_")
+        parameters = {}
+        for attribute in columns:
+            param = attribute[length:]
+            if param == "Name" or row[attribute] == None:
+                continue
+            else:
+                if row[attribute] == "None":
+                    parameters[param] = tf.keras.activations.sigmoid
+                elif row[attribute] == "relu":
+                    parameters[param] = tf.keras.activations.relu
+                else:
+                    parameters[param] = row[attribute]
+        layers.append([layer_type[row[f"Layer{k}_Name"]] , parameters])
+        k += 1
+    print(layers)
+    model = create_model_list(layers)
+    compile_model(model, row["LearningRate"], Optimize[row["Optimizer"]], loss = row["Loss"])
+    model.fit(training_states[0], training_states[1], batch_size= row["Batch"], epochs=row["Epoch"])
+    return model
+ 
+
+# A function that outputs the the model with the highest success rate in the TrainingResults.csv file
+def best_model():
+    # import the previously computed results
+    results = pd.read_csv("Results/TrainingResults.csv")
+    
+    row = results.iloc[results["SuccessRate"].idxmax()]
+    print(row)
+    model = csv_to_model(row)
+
+    test_model(model, deepcopy(evaluation_states))
+    test_against_game(model, 1000, game_options)
+
+    return model
 

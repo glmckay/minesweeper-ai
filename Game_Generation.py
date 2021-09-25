@@ -81,7 +81,7 @@ def create_test_state_pairs(**kwargs):
     return [game_states, game_solutions]
 
 # calculates the success rate of the model (number of times it does not pick a mine at a particular game state)
-def test_model(model, states, to_print = 0):
+def test_model(model, states):
 
     inputs = numpy.array([state.player_grid for state in states])
 
@@ -96,16 +96,14 @@ def test_model(model, states, to_print = 0):
         total += 1
         if not state.game_over:
             successes += 1
-    if to_print == 0:
-        print(
-            f"Model did not game over in {successes} out of {len(states)} states "
-            f"({successes / total * 100:.3f} %)"
-        )
-    else:
-        return successes / total * 100
+    print(
+        f"Model did not game over in {successes} out of {len(states)} states "
+        f"({successes / total * 100:.3f} %)"
+    )
+    return successes / total * 100
 
 # finds the win rate of the model, that is the probability that the model finishes a full game
-def test_against_game(model, number_of_games, game_args, to_print = 0):
+def test_against_game(model, number_of_games, game_args):
     wins = 0
 
     games = [Game(**game_args) for i in range(number_of_games)]
@@ -121,10 +119,8 @@ def test_against_game(model, number_of_games, game_args, to_print = 0):
 
         games = [game for game in games if not game.game_over]
 
-    if to_print == 0:
-        print(
-            f"Model won {wins} out of {number_of_games} games "
-            f"({wins / number_of_games * 100:.3f} %)"
-        )
-    else:
-        return wins / number_of_games * 100
+    print(
+        f"Model won {wins} out of {number_of_games} games "
+        f"({wins / number_of_games * 100:.3f} %)"
+    )
+    return wins / number_of_games * 100
