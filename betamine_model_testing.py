@@ -108,11 +108,11 @@ test_parameters = {"layers_struct": [
         [tf.keras.layers.Dense, {"units": 5*n, "activation":  tf.keras.activations.relu}],
         [tf.keras.layers.Dense, {"units": 1*n, "activation": tf.keras.activations.softmax}]]
         ],
-    "learning_rates": [0.1], 
+    "learning_rates": [1,0.1,0.01], 
     "optimizers": [tf.keras.optimizers.SGD], 
-    "losses": [tf.keras.losses.MeanSquaredError], 
-    "batches": [100], 
-    "epochs": [3]
+    "losses": [tf.keras.losses.MeanSquaredError,tf.keras.losses.CategoricalCrossentropy], 
+    "batches": [30,100], 
+    "epochs": [3,5]
     }
 
 test_results = test_models(**test_parameters)
