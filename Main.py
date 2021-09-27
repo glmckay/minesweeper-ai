@@ -18,7 +18,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 from minesweeper_tf import play_game
 import Game_Generation
-from betamine_model_testing import best_model , test_parameters_to_csv
+from betamine_model_testing import best_model , test_parameters_to_csv, csv_to_model
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:

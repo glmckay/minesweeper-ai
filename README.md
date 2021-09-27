@@ -3,7 +3,7 @@ A minesweeper AI with neural networks.
 
 * Download the repository
 * On the command line, go to the path of the download
-* Type `< python -i Main.py>`
+* Type `python -i Main.py`
 
 # To play a minesweeper game:
 Type in the function 

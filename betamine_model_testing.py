@@ -130,10 +130,10 @@ def test_parameters_to_csv(test_parameters):
 
     test_results = pd.concat([test_results, previous_result])
 
-    subset = list(test_results.columns)
-    subset.remove("SuccessRate")
-    subset.remove("WinRate")
-    test_results = test_results.drop_duplicates(subset=subset, keep="last").reset_index(drop=True)
+    # subset = list(test_results.columns)
+    # subset.remove("SuccessRate")
+    # subset.remove("WinRate")
+    # test_results = test_results.drop_duplicates(subset=subset, keep="last").reset_index(drop=True)
 
     # save the results
     test_results.to_csv("Results/TrainingResults.csv", index=False)
@@ -162,9 +162,9 @@ def csv_to_model(row):
                 continue
             else:
                 if row[attribute] == "None":
-                    parameters[param] = tf.keras.activations.sigmoid
-                elif row[attribute] == "relu":
-                    parameters[param] = tf.keras.activations.relu
+                    parameters[param] = None
+                # elif row[attribute] == "relu":
+                #     parameters[param] = tf.keras.activations.relu
                 else:
                     parameters[param] = row[attribute]
         layers.append([layer_type[row[f"Layer{k}_Name"]] , parameters])
